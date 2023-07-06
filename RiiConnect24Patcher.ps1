@@ -437,6 +437,7 @@ Title "Loading..."
 $patcherState.workPath = Confirm-Path 'rc24-data'
 $patcherState.outPath = Confirm-Path 'rc24-data/copyToSD'
 Confirm-Path 'rc24-data/Temp' >$null
+Confirm-Path 'rc24-data/tools' >$null
 
 @(
 	@('EVCPatcher/pack/Sharpii.exe', "rc24-data/tools/Sharpii.exe"),
