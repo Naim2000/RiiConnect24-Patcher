@@ -310,11 +310,11 @@ function StartPatching() {
 			"Pro tip: You don't need to keep WAD files on your SD card after installation.`n"
 		Start-Sleep 2
 		Pause
-		Try { Confirm-Path "$outPath/WAD" -empty >$null }
-		Catch [System.IO.IOException] {
-			Write-Host "$_ << why does this happen ?????"
-			Start-Sleep .5
-		}
+	}
+	Try { Confirm-Path "$outPath/WAD" -empty >$null }
+	Catch [System.IO.IOException] {
+		Write-Host "$_ << why does this happen ?????"
+		Start-Sleep .5
 	}
 	
 	$region = $patcherState.region
