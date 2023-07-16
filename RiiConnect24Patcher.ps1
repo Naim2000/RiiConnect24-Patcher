@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$version = 'v1.0.0'
+$version = 'v1.0.1'
 $patcherInfo = `
 	"RiiConnect24Patcher for Windows [PowerShell] $version
 by Naim2000"
@@ -120,7 +120,24 @@ function Subtitle([string]$title, [string]$message) {
 }
 
 function RC24get([string]$file, [string]$outFile) {
-	Invoke-WebRequest -Uri "https://patcher.rc24.xyz/update/RiiConnect24-Patcher/v1/$file" -OutFile $outFile -UserAgent "RiiConnect24 Patcher [Powershell] $version"
+	Try {
+		Invoke-WebRequest -Uri "https://patcher.rc24.xyz/update/RiiConnect24-Patcher/v1/$file" -OutFile $outFile -UserAgent "RiiConnect24 Patcher [Powershell] $version"
+	}
+ Catch [System.Net.WebException] {
+		$res = $_.Exception.Response
+            
+		if ([int]$res.StatusCode -eq 404) {
+			#this is stupid
+			Write-Warning "$file came back with a 404. `nComplain to kcrpl or something, idk."
+			$__file = $file -creplace 'EUR', 'Europe' -creplace 'JPN', 'Japan'
+			if ($file -ne $__file) {
+				Write-Host -BackgroundColor black -ForegroundColor Cyan "Trying again with $__file ."
+				Try { RC24get $__file $outFile } Catch { Write-Host -BackgroundColor Red -ForegroundColor Black "That didn't work. Weird."; throw $_ }
+			} 
+			else { throw $_ }
+		}
+		else { throw $_ }
+	}
 }
 
 function SketchMastergetcetk ([string]$ch, [string]$id) {
@@ -365,7 +382,8 @@ function StartPatching() {
 		RC24get "CMOCPatcher/patch/00000001_$region.delta" "${id}v512/00000001.delta"
 		RC24get "CMOCPatcher/patch/00000004_$region.delta" "${id}v512/00000004.delta"
 		if ($region -ne "JPN") { SketchMastergetcetk 'CMOC' "${id}v512" }
-		Patch_Title $id 512 @('00000001', '00000004') { if ($region -ne 'USA') { 'Mii Contest Channel' } else { 'Check Mii Out Channel' } }
+		$name = if ($region -ne 'USA') { 'Mii Contest Channel' } else { 'Check Mii Out Channel' }
+		Patch_Title $id 512 @('00000001', '00000004') $name
 
 		$patcherState.patched[2] = $true
 		Menu_UpdatePatchProgress
@@ -387,8 +405,8 @@ function StartPatching() {
 		Confirm-Path "${id}v1792" >$null
 		RC24get "NCPatcher/patch/$region.delta" "${id}v1792/00000001.delta"
 		if ($region -ne "JPN") { SketchMastergetcetk 'NC' "${id}v1792" }
-		Patch_Title $id 1792 @('00000001') 'Nintendo Channel'
 
+		Patch_Title $id 1792 @('00000001') 'Nintendo Channel'
 		$patcherState.patched[4] = $true
 		Menu_UpdatePatchProgress
 	}
@@ -417,6 +435,7 @@ function Menu_UpdatePatchProgress() {
 			Write-Host "$($c+1). $($patchOptions[$c])" -BackgroundColor Red -ForegroundColor Black
 		}
 	}
+	Write-Host $null
 	
 }
 
@@ -427,7 +446,7 @@ function Patch_Complete() {
 	$patcherState.patch = @($true, $true, $false, $false, $false, $true)
 	Title "Patching complete!" -color Green 
 	Write-Host "The files have been saved in $($patcherState.outPath)."
-	if (!$patcherState.SD -and $patcherState.console -ne 'Dolphin') { Write-Host "Copy the 'apps' and 'WAD' folders to your SD card.`n" }
+	if (!$patcherState.SD) { Write-Host "Copy the 'apps' and 'WAD' folders to your SD card.`n" }
 	Start-Sleep 2
 	Read-AnyKey "return to the main menu"
 }
@@ -454,10 +473,6 @@ $xdelta = resolve-path 'rc24-data/tools/xdelta3.exe'
 $nusdecrypt = resolve-path 'rc24-data/tools/nusdecrypt.exe'
 
 Detect_WiiSD
-Try { Menu_SelectConsoleType }
-Catch [System.Net.WebException] {
-	Write-Host -BackgroundColor Yellow -ForegroundColor Black `
-"The below exception is from:
-$($_.Exception.Response.ResponseURI)"
-	throw $_
-}
+Menu_SelectConsoleType
+
+# trap [System.Net.WebException]
